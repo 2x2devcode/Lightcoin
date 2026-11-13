@@ -744,9 +744,10 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 if (i != mAskedUsForMasternodeList.end()) {
                     int64_t t = (*i).second;
                     if (GetTime() < t) {
-                        LogPrintf("CMasternodeMan::ProcessMessage() : dseg - peer already asked me for the list\n");
-                        LOCK(cs_main);
-                        Misbehaving(pfrom->GetId(), 34);
+                        // Rate-limit without banning: peers reconnecting or retrying
+                        // masternode sync were hitting BAN THRESHOLD (34 x 3) too easily.
+                        LogPrint(BCLog::MASTERNODE, "dseg - peer %s already asked me for the list; ignoring\n",
+                                 pfrom->addr.ToString());
                         return;
                     }
                 }

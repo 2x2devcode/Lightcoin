@@ -1029,9 +1029,8 @@ void CBudgetManager::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         if (Params().NetworkID() == CBaseChainParams::MAIN) {
             if (nProp.IsNull()) {
                 if (pfrom->HasFulfilledRequest("budgetvotesync")) {
-                    LogPrint(BCLog::MNBUDGET,"mnvs - peer already asked me for the list\n");
-                    LOCK(cs_main);
-                    Misbehaving(pfrom->GetId(), 20);
+                    // Same policy as mnget/dseg: ignore duplicate sync asks without ban.
+                    LogPrint(BCLog::MNBUDGET, "mnvs - peer %d already asked me for the list; ignoring\n", pfrom->GetId());
                     return;
                 }
                 pfrom->FulfilledRequest("budgetvotesync");

@@ -396,9 +396,10 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
 
         if (Params().NetworkID() == CBaseChainParams::MAIN) {
             if (pfrom->HasFulfilledRequest(NetMsgType::GETMNWINNERS)) {
-                LogPrintf("CMasternodePayments::ProcessMessageMasternodePayments() : mnget - peer already asked me for the list\n");
-                LOCK(cs_main);
-                Misbehaving(pfrom->GetId(), 20);
+                // Rate-limit without banning: legitimate peers (and seed nodes) often
+                // re-request mnget during masternode sync retries on the same connection.
+                // Still ignore the duplicate to avoid bandwidth DoS.
+                LogPrint(BCLog::MASTERNODE, "mnget - peer %d already asked me for the list; ignoring\n", pfrom->GetId());
                 return;
             }
         }
