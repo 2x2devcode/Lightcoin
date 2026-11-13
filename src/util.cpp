@@ -147,10 +147,14 @@ public:
         // that the config appears to have been loaded and there are no modules/engines available.
         OPENSSL_no_config();
 #else
-        // OpenSSL >= 1.1 is thread-safe by default and CRYPTO_num_locks /
+        // OpenSSL >= 1.1 / 3.x is thread-safe by default and CRYPTO_num_locks /
         // CRYPTO_set_locking_callback were removed. OPENSSL_init_crypto replaces
         // OPENSSL_no_config for disabling the config file load.
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS | OPENSSL_INIT_NO_LOAD_CONFIG, nullptr);
+#else
         OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr);
+#endif
 #endif
 
 #ifdef WIN32

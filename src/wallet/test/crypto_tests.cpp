@@ -10,8 +10,11 @@
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
-#include <openssl/aes.h>
 #include <openssl/evp.h>
+
+#ifndef AES_BLOCK_SIZE
+#define AES_BLOCK_SIZE 16
+#endif
 
 BOOST_FIXTURE_TEST_SUITE(wallet_crypto, BasicTestingSetup)
 
@@ -43,14 +46,14 @@ bool OldEncrypt(const CKeyingMaterial& vchPlaintext, std::vector<unsigned char> 
     vchCiphertext = std::vector<unsigned char> (nCLen);
 
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) return false;
 
     bool fOk = true;
 
-    EVP_CIPHER_CTX_init(ctx);
     if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, chKey, chIV) != 0;
     if (fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen) != 0;
     if (fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0]) + nCLen, &nFLen) != 0;
-    EVP_CIPHER_CTX_cleanup(ctx);
+    EVP_CIPHER_CTX_free(ctx);
 
     if (!fOk) return false;
 
@@ -67,14 +70,14 @@ bool OldDecrypt(const std::vector<unsigned char>& vchCiphertext, CKeyingMaterial
     vchPlaintext = CKeyingMaterial(nPLen);
 
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) return false;
 
     bool fOk = true;
 
-    EVP_CIPHER_CTX_init(ctx);
     if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, chKey, chIV) != 0;
     if (fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen) != 0;
     if (fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0]) + nPLen, &nFLen) != 0;
-    EVP_CIPHER_CTX_cleanup(ctx);
+    EVP_CIPHER_CTX_free(ctx);
 
     if (!fOk) return false;
 
@@ -132,12 +135,14 @@ static void TestDecrypt(const CCrypter& crypt, const std::vector<unsigned char>&
 
     // These two should be equal. However, OpenSSL 1.0.1j introduced a change
     // that would zero all padding except for the last byte for failed decrypts.
-    // This behavior was reverted for 1.0.1k.
+    // This behavior was reverted for 1.0.1k. OpenSSL 3 removed SSLeay().
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     if (vchDecrypted1 != vchDecrypted2 && vchDecrypted1.size() >= AES_BLOCK_SIZE && SSLeay() == 0x100010afL)
     {
         for(CKeyingMaterial::iterator it = vchDecrypted1.end() - AES_BLOCK_SIZE; it != vchDecrypted1.end() - 1; it++)
             *it = 0;
     }
+#endif
 
     BOOST_CHECK_MESSAGE(vchDecrypted1 == vchDecrypted2, HexStr(vchDecrypted1.begin(), vchDecrypted1.end()) + " != " + HexStr(vchDecrypted2.begin(), vchDecrypted2.end()));
 

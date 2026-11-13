@@ -19,7 +19,7 @@ These are the dependencies currently used by Lightcoin Core. You can find instru
 | libpng |  |  |  |  | [Yes](https://github.com/LightcoinNodes/Lightcoin/blob/master/depends/packages/qt.mk#L64) |
 | librsvg | |  |  |  |  |
 | MiniUPnPc | [2.0.20180203](http://miniupnp.free.fr/files) |  | No |  |  |
-| OpenSSL | [1.1.1w](https://www.openssl.org/source) (depends) / system 1.1 or 3.x on Ubuntu 20–26 | 1.1.1 | Yes |  |  |
+| OpenSSL | [3.0.15](https://github.com/openssl/openssl/releases/tag/openssl-3.0.15) (depends) / system 1.1.1+ or 3.x on Ubuntu 20–26 | 1.1.1 | Yes |  |  |
 | GMP | [6.1.2](https://gmplib.org/) | | No | | |
 | PCRE |  |  |  |  | [Yes](https://github.com/LightcoinNodes/Lightcoin/blob/master/depends/packages/qt.mk#L66) |
 | protobuf | [2.6.1](https://github.com/google/protobuf/releases) |  | No |  |  |

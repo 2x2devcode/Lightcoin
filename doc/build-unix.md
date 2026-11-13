@@ -102,9 +102,10 @@ Otherwise, you can build from self-compiled `depends` (see above).
 
 OpenSSL notes:
 
-- Ubuntu 20.04: system OpenSSL 1.1.1 is fine.
-- Ubuntu 22.04 / 24.04 / 26.04: system OpenSSL 3 is supported (BIP38 AES no longer uses removed OpenSSL low-level AES APIs).
-- `depends` vendors OpenSSL 1.1.1w for reproducible builds.
+- Ubuntu 20.04: system OpenSSL 1.1.1 is supported.
+- Ubuntu 22.04 / 24.04 / 26.04: system OpenSSL 3 is the default and fully supported.
+- `depends` vendors **OpenSSL 3.0.15** for reproducible / cross builds.
+- Low-level OpenSSL AES/SHA helpers were replaced with bundled crypto (ctaes / CSHA256) so OpenSSL 3 builds cleanly without the legacy provider.
 
 To build Lightcoin Core without wallet, see [*Disable-wallet mode*](/doc/build-unix.md#disable-wallet-mode)
 

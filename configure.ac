@@ -1078,8 +1078,8 @@ if test x$use_pkgconfig = xyes; then
   m4_ifdef(
     [PKG_CHECK_MODULES],
     [
-      PKG_CHECK_MODULES([SSL], [libssl],, [AC_MSG_ERROR(openssl  not found.)])
-      PKG_CHECK_MODULES([CRYPTO], [libcrypto],,[AC_MSG_ERROR(libcrypto  not found.)])
+      PKG_CHECK_MODULES([SSL], [libssl >= 1.1.1],, [AC_MSG_ERROR(OpenSSL 1.1.1+ / 3.x not found.)])
+      PKG_CHECK_MODULES([CRYPTO], [libcrypto >= 1.1.1],,[AC_MSG_ERROR(libcrypto 1.1.1+ / 3.x not found.)])
       BITCOIN_QT_CHECK([PKG_CHECK_MODULES([PROTOBUF], [protobuf], [have_protobuf=yes], [BITCOIN_QT_FAIL(libprotobuf not found)])])
       BITCOIN_QT_CHECK([PKG_CHECK_MODULES([QR], [libqrencode],,[BITCOIN_QT_FAIL(libqrencode not found)])])
       if test x$use_qtcharts != xno; then
@@ -1530,7 +1530,8 @@ if test x$need_bundled_univalue = xyes; then
   AC_CONFIG_SUBDIRS([src/univalue])
 fi
 
-ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery --disable-jni"
+dnl OpenSSL 3 breaks secp256k1's optional OpenSSL EC tests; we do not need them.
+ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery --disable-jni --disable-openssl-tests"
 AC_CONFIG_SUBDIRS([src/secp256k1])
 
 AC_OUTPUT

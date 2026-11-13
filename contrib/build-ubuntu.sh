@@ -64,6 +64,9 @@ if [[ "${WITH_GUI}" -eq 0 ]]; then
 fi
 
 # Ubuntu 22.04+ ships OpenSSL 3; Ubuntu 20.04 ships 1.1.1. Both are supported.
+# Reproducible/cross builds should use depends (OpenSSL 3.0.15):
+#   make -C depends -j"${JOBS}"
+#   ./configure --prefix="$(pwd)/depends/$(depends/config.guess)" ...
 ./configure "${CONFIG_ARGS[@]}"
 make -j"${JOBS}"
 
