@@ -104,7 +104,8 @@ OpenSSL notes:
 
 - Ubuntu 20.04: system OpenSSL 1.1.1 is supported.
 - Ubuntu 22.04 / 24.04 / 26.04: system OpenSSL 3 is the default and fully supported.
-- `depends` vendors **OpenSSL 3.0.15** for reproducible / cross builds.
+- `depends` vendors **OpenSSL 3.0.15** for reproducible / cross builds (used by the wallet binaries).
+- Qt 5.9 in `depends` is configured with `-no-openssl` because Qt 5.9 cannot link OpenSSL 3; wallet crypto still uses OpenSSL 3 via libcrypto.
 - Low-level OpenSSL AES/SHA helpers were replaced with bundled crypto (ctaes / CSHA256) so OpenSSL 3 builds cleanly without the legacy provider.
 
 To build Lightcoin Core without wallet, see [*Disable-wallet mode*](/doc/build-unix.md#disable-wallet-mode)
