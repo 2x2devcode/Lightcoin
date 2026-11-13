@@ -22,7 +22,6 @@
 #include <QApplication>
 #include <QByteArray>
 #include <QDataStream>
-#include <QDateTime>
 #include <QDebug>
 #include <QFile>
 #include <QFileOpenEvent>
@@ -34,9 +33,9 @@
 #include <QNetworkProxy>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QSslCertificate>
-#include <QSslConfiguration>
+#ifndef QT_NO_SSL
 #include <QSslError>
+#endif
 #include <QStringList>
 #include <QTextDocument>
 #include <QUrlQuery>
@@ -58,10 +57,6 @@ struct X509StoreDeleter {
       void operator()(X509_STORE* b) {
           X509_STORE_free(b);
       }
-};
-
-struct X509Deleter {
-      void operator()(X509* b) { X509_free(b); }
 };
 
 namespace // Anon namespace
@@ -95,13 +90,10 @@ static QString ipcServerName()
 
 static QList<QString> savedPaymentRequests;
 
-static void ReportInvalidCertificate(const QSslCertificate& cert)
-{
-    qDebug() << QString("%1: Payment server found an invalid certificate: ").arg(__func__) << cert.serialNumber() << cert.subjectInfo(QSslCertificate::CommonName) << cert.subjectInfo(QSslCertificate::DistinguishedNameQualifier) << cert.subjectInfo(QSslCertificate::OrganizationalUnitName);
-}
-
 //
-// Load OpenSSL's list of root certificate authorities
+// Load OpenSSL's list of root certificate authorities.
+// Depends builds Qt with -no-openssl (Qt 5.9 + OpenSSL 3), so this path
+// uses OpenSSL X509_STORE helpers instead of QSslCertificate.
 //
 void PaymentServer::LoadRootCAs(X509_STORE* _store)
 {
@@ -121,51 +113,20 @@ void PaymentServer::LoadRootCAs(X509_STORE* _store)
     if (certFile.isEmpty())
         return; // Empty store
 
-    QList<QSslCertificate> certList;
-
     if (certFile != "-system-") {
-        certList = QSslCertificate::fromPath(certFile);
-        // Use those certificates when fetching payment requests, too:
-        QSslConfiguration::defaultConfiguration().setCaCertificates(certList);
-    } else
-        certList = QSslConfiguration::systemCaCertificates();
-
-    int nRootCerts = 0;
-    const QDateTime currentTime = QDateTime::currentDateTime();
-    Q_FOREACH (const QSslCertificate& cert, certList) {
-        if (currentTime < cert.effectiveDate() || currentTime > cert.expiryDate()) {
-            ReportInvalidCertificate(cert);
-            continue;
+        const std::string path = certFile.toStdString();
+        if (!X509_STORE_load_locations(certStore.get(), path.c_str(), nullptr)) {
+            qWarning() << "PaymentServer::LoadRootCAs : Failed to load root certificates from" << certFile;
+            return;
         }
-
-        // Blacklisted certificate
-        if (cert.isBlacklisted()) {
-            ReportInvalidCertificate(cert);
-            continue;
+        qWarning() << "PaymentServer::LoadRootCAs : Loaded root certificates from" << certFile;
+    } else {
+        if (!X509_STORE_set_default_paths(certStore.get())) {
+            qWarning() << "PaymentServer::LoadRootCAs : Failed to load system root certificates";
+            return;
         }
-        QByteArray certData = cert.toDer();
-        const unsigned char* data = (const unsigned char*)certData.data();
-
-        std::unique_ptr<X509, X509Deleter> x509(d2i_X509(0, &data, certData.size()));
-        if (x509 && X509_STORE_add_cert(certStore.get(), x509.get())) {
-            // Note: X509_STORE increases the reference count to the X509 object,
-            // we still have to release our reference to it.
-            ++nRootCerts;
-        } else {
-            ReportInvalidCertificate(cert);
-            continue;
-        }
+        qWarning() << "PaymentServer::LoadRootCAs : Loaded system root certificates";
     }
-    qWarning() << "PaymentServer::LoadRootCAs : Loaded " << nRootCerts << " root certificates";
-
-    // Project for another day:
-    // Fetch certificate revocation lists, and add them to certStore.
-    // Issues to consider:
-    //   performance (start a thread to fetch in background?)
-    //   privacy (fetch through tor/proxy so IP address isn't revealed)
-    //   would it be easier to just use a compiled-in blacklist?
-    //    or use Qt's blacklist?
-    //   "certificate stapling" with server-side caching is more efficient
 }
 
 //
@@ -338,7 +299,9 @@ void PaymentServer::initNetManager()
         qDebug() << "PaymentServer::initNetManager : No active proxy server found.";
 
     connect(netManager, &QNetworkAccessManager::finished, this, &PaymentServer::netRequestFinished);
+#ifndef QT_NO_SSL
     connect(netManager, &QNetworkAccessManager::sslErrors, this, &PaymentServer::reportSslErrors);
+#endif
 }
 
 void PaymentServer::uiReady()
@@ -645,6 +608,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
     }
 }
 
+#ifndef QT_NO_SSL
 void PaymentServer::reportSslErrors(QNetworkReply* reply, const QList<QSslError>& errs)
 {
     Q_UNUSED(reply);
@@ -656,6 +620,7 @@ void PaymentServer::reportSslErrors(QNetworkReply* reply, const QList<QSslError>
     }
     Q_EMIT message(tr("Network request error"), errString, CClientUIInterface::MSG_ERROR);
 }
+#endif
 
 void PaymentServer::setOptionsModel(OptionsModel* optionsModel)
 {

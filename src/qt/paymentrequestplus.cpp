@@ -12,16 +12,26 @@
 
 #include <stdexcept>
 
-#include <QDateTime>
 #include <QDebug>
-#include <QSslCertificate>
 
+// Qt is built with -no-openssl in depends (Qt 5.9 does not support OpenSSL 3),
+// so BIP70 certificate checks use OpenSSL directly instead of QSslCertificate.
 
 class SSLVerifyError : public std::runtime_error
 {
 public:
     SSLVerifyError(std::string err) : std::runtime_error(err) {}
 };
+
+static bool IsCertificateCurrentlyValid(X509* cert)
+{
+    // X509_cmp_current_time returns -1 if asn1_time <= now, 1 if asn1_time > now, 0 on error.
+    if (X509_cmp_current_time(X509_get0_notBefore(cert)) >= 0)
+        return false; // not yet valid (or error)
+    if (X509_cmp_current_time(X509_get0_notAfter(cert)) <= 0)
+        return false; // expired (or error)
+    return true;
+}
 
 bool PaymentRequestPlus::parse(const QByteArray& data)
 {
@@ -89,22 +99,23 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
     }
 
     std::vector<X509*> certs;
-    const QDateTime currentTime = QDateTime::currentDateTime();
     for (int i = 0; i < certChain.certificate_size(); i++) {
-        QByteArray certData(certChain.certificate(i).data(), certChain.certificate(i).size());
-        QSslCertificate qCert(certData, QSsl::Der);
-        if (currentTime < qCert.effectiveDate() || currentTime > qCert.expiryDate()) {
-            qWarning() << "PaymentRequestPlus::getMerchant : Payment request: certificate expired or not yet active: " << qCert;
+        const unsigned char* data = (const unsigned char*)certChain.certificate(i).data();
+        X509* cert = d2i_X509(nullptr, &data, certChain.certificate(i).size());
+        if (!cert) {
+            qWarning() << "PaymentRequestPlus::getMerchant : Payment request: failed to parse certificate";
+            for (X509* c : certs)
+                X509_free(c);
             return false;
         }
-        if (qCert.isBlacklisted()) {
-            qWarning() << "PaymentRequestPlus::getMerchant : Payment request: certificate blacklisted: " << qCert;
+        if (!IsCertificateCurrentlyValid(cert)) {
+            qWarning() << "PaymentRequestPlus::getMerchant : Payment request: certificate expired or not yet active";
+            X509_free(cert);
+            for (X509* c : certs)
+                X509_free(c);
             return false;
         }
-        const unsigned char *data = (const unsigned char *)certChain.certificate(i).data();
-        X509 *cert = d2i_X509(nullptr, &data, certChain.certificate(i).size());
-        if (cert)
-            certs.push_back(cert);
+        certs.push_back(cert);
     }
     if (certs.empty()) {
         qWarning() << "PaymentRequestPlus::getMerchant : Payment request: empty certificate chain";
