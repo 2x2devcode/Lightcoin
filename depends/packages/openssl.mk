@@ -1,5 +1,6 @@
 package=openssl
-# OpenSSL 3.0 LTS — required for Ubuntu 22.04+ system parity and modern depends builds.
+# OpenSSL 3.0 LTS for Lightcoind / Lightcoin-cli / Lightcoin-qt app crypto.
+# Qt 5.9 in depends is built with -no-openssl (Qt 5.9 does not support OpenSSL 3).
 $(package)_version=3.0.15
 $(package)_download_path=https://github.com/openssl/openssl/releases/download/openssl-$($(package)_version)
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
@@ -43,11 +44,11 @@ define $(package)_config_cmds
 endef
 
 define $(package)_build_cmds
-  $(MAKE) -j1 build_libs
+  $(MAKE) -j1
 endef
 
 define $(package)_stage_cmds
-  $(MAKE) DESTDIR=$($(package)_staging_dir) -j1 install_sw install_ssldirs
+  $(MAKE) DESTDIR=$($(package)_staging_dir) -j1 install_sw
 endef
 
 define $(package)_postprocess_cmds
