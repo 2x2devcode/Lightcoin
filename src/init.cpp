@@ -1350,6 +1350,16 @@ bool AppInit2()
         }
     }
 
+    // Auto-whitelist hard-coded seed IPs (literal hostnames) so known network hubs
+    // are not permanently banned when they re-request masternode sync data.
+    for (const CDNSSeedData& seed : Params().DNSSeeds()) {
+        CNetAddr addr;
+        if (LookupHost(seed.host.c_str(), addr, false /* fAllowLookup */)) {
+            connman.AddWhitelistedRange(CSubNet(addr));
+            LogPrintf("Whitelisting seed peer %s (%s)\n", seed.name, seed.host);
+        }
+    }
+
     // Check for host lookup allowed before parsing any network related parameters
     fNameLookup = GetBoolArg("-dns", DEFAULT_NAME_LOOKUP);
 
