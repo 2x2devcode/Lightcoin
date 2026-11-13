@@ -117,9 +117,6 @@ public Q_SLOTS:
 private Q_SLOTS:
     void handleURIConnection();
     void netRequestFinished(QNetworkReply*);
-#ifndef QT_NO_SSL
-    void reportSslErrors(QNetworkReply*, const QList<QSslError>&);
-#endif
     void handlePaymentACK(const QString& paymentACKMsg);
 
 protected:
@@ -133,6 +130,11 @@ private:
 
     // Setup networking
     void initNetManager();
+    // Not a Q_SLOT: moc does not see QT_NO_SSL from Qt's qconfig reliably, which
+    // previously left a metaobject reference with no implementation.
+#ifndef QT_NO_SSL
+    void reportSslErrors(QNetworkReply*, const QList<QSslError>&);
+#endif
 
     bool saveURIs; // true during startup
     QLocalServer* uriServer;
