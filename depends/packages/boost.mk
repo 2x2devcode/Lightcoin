@@ -4,6 +4,10 @@ $(package)_version=1_64_0
 $(package)_download_path=https://archives.boost.io/release/1.64.0/source
 $(package)_file_name=$(package)_$($(package)_version).tar.bz2
 $(package)_sha256_hash=7bcc5caace97baa948931d712ea5f37038dbb1c5d89b43ad4def4ed7cb683332
+# GCC 14+ (Ubuntu 24.10/26) treats implicit-function-declaration as an error,
+# which breaks Boost.Build bootstrap for 1.64. Also rename strings.h to avoid
+# clashing with the glibc header of the same name.
+$(package)_patches=fix_gcc14_bootstrap.patch
 
 define $(package)_set_vars
 $(package)_config_opts_release=variant=release
@@ -30,6 +34,7 @@ $(package)_cxxflags_linux=-fPIC
 endef
 
 define $(package)_preprocess_cmds
+  patch -p1 < $($(package)_patch_dir)/fix_gcc14_bootstrap.patch && \
   echo "using $(boost_toolset_$(host_os)) : : $($(package)_cxx) : <cxxflags>\"$($(package)_cxxflags) $($(package)_cppflags)\" <linkflags>\"$($(package)_ldflags)\" <archiver>\"$(boost_archiver_$(host_os))\" <striper>\"$(host_STRIP)\"  <ranlib>\"$(host_RANLIB)\" <rc>\"$(host_WINDRES)\" : ;" > user-config.jam
 endef
 

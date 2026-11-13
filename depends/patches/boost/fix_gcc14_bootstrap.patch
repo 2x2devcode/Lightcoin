@@ -1,0 +1,344 @@
+diff -ruN boost_orig/tools/build/src/engine/build.jam boost_patched/tools/build/src/engine/build.jam
+--- a/tools/build/src/engine/build.jam	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/build.jam	2026-11-13 15:59:32.321109908 +0000
+@@ -215,7 +215,7 @@
+     : -L$(--python-lib[1]) -l$(--python-lib[2]) ;
+ ## GCC 2.x, 3.x, 4.x
+ toolset gcc gcc : "-o " : -D
+-    : -pedantic -fno-strict-aliasing
++    : -pedantic -fno-strict-aliasing -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion
+     [ opt --release : [ opt --symbols : -g : -s ] -O3 ]
+     [ opt --debug : -g -O0 -fno-inline ]
+     [ opt --profile : -O3 -g -pg ]
+diff -ruN boost_orig/tools/build/src/engine/build.sh boost_patched/tools/build/src/engine/build.sh
+--- a/tools/build/src/engine/build.sh	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/build.sh	2026-11-13 15:59:32.321109908 +0000
+@@ -149,7 +149,7 @@
+         ;;
+ 
+         *)
+-        BOOST_JAM_CC=gcc
++        BOOST_JAM_CC="gcc -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion"
+         esac
+     ;;
+ 
+diff -ruN boost_orig/tools/build/src/engine/builtins.c boost_patched/tools/build/src/engine/builtins.c
+--- a/tools/build/src/engine/builtins.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/builtins.c	2026-11-13 15:59:32.329110014 +0000
+@@ -22,7 +22,7 @@
+ #include "parse.h"
+ #include "pathsys.h"
+ #include "rules.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "subst.h"
+ #include "timestamp.h"
+ #include "variable.h"
+diff -ruN boost_orig/tools/build/src/engine/class.c boost_patched/tools/build/src/engine/class.c
+--- a/tools/build/src/engine/class.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/class.c	2026-11-13 15:59:32.341110171 +0000
+@@ -13,7 +13,7 @@
+ #include "lists.h"
+ #include "object.h"
+ #include "rules.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "variable.h"
+ #include "output.h"
+ 
+diff -ruN boost_orig/tools/build/src/engine/command.h boost_patched/tools/build/src/engine/command.h
+--- a/tools/build/src/engine/command.h	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/command.h	2026-11-13 15:59:32.341110171 +0000
+@@ -42,7 +42,7 @@
+ 
+ #include "lists.h"
+ #include "rules.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ 
+ 
+ typedef struct _cmd CMD;
+diff -ruN boost_orig/tools/build/src/engine/compile.c boost_patched/tools/build/src/engine/compile.c
+--- a/tools/build/src/engine/compile.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/compile.c	2026-11-13 15:59:32.329110014 +0000
+@@ -33,7 +33,7 @@
+ #include "parse.h"
+ #include "rules.h"
+ #include "search.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "variable.h"
+ #include "output.h"
+ 
+diff -ruN boost_orig/tools/build/src/engine/execcmd.h boost_patched/tools/build/src/engine/execcmd.h
+--- a/tools/build/src/engine/execcmd.h	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/execcmd.h	2026-11-13 15:59:32.341110171 +0000
+@@ -16,7 +16,7 @@
+ #define EXECCMD_H
+ 
+ #include "lists.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "timestamp.h"
+ 
+ 
+diff -ruN boost_orig/tools/build/src/engine/execunix.c boost_patched/tools/build/src/engine/execunix.c
+--- a/tools/build/src/engine/execunix.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/execunix.c	2026-11-13 15:59:32.341110171 +0000
+@@ -10,7 +10,7 @@
+ 
+ #include "lists.h"
+ #include "output.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ 
+ #include <errno.h>
+ #include <signal.h>
+diff -ruN boost_orig/tools/build/src/engine/filent.c boost_patched/tools/build/src/engine/filent.c
+--- a/tools/build/src/engine/filent.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/filent.c	2026-11-13 15:59:32.345110224 +0000
+@@ -34,7 +34,7 @@
+ 
+ #include "object.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "output.h"
+ 
+ #ifdef __BORLANDC__
+diff -ruN boost_orig/tools/build/src/engine/filesys.c boost_patched/tools/build/src/engine/filesys.c
+--- a/tools/build/src/engine/filesys.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/filesys.c	2026-11-13 15:59:32.341110171 +0000
+@@ -33,7 +33,7 @@
+ #include "lists.h"
+ #include "object.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "output.h"
+ 
+ #include <assert.h>
+diff -ruN boost_orig/tools/build/src/engine/fileunix.c boost_patched/tools/build/src/engine/fileunix.c
+--- a/tools/build/src/engine/fileunix.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/fileunix.c	2026-11-13 15:59:32.341110171 +0000
+@@ -33,7 +33,7 @@
+ 
+ #include "object.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "output.h"
+ 
+ #include <assert.h>
+diff -ruN boost_orig/tools/build/src/engine/filevms.c boost_patched/tools/build/src/engine/filevms.c
+--- a/tools/build/src/engine/filevms.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/filevms.c	2026-11-13 15:59:32.345110224 +0000
+@@ -18,7 +18,7 @@
+ 
+ #include "object.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ 
+ 
+ #ifdef OS_VMS
+diff -ruN boost_orig/tools/build/src/engine/function.h boost_patched/tools/build/src/engine/function.h
+--- a/tools/build/src/engine/function.h	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/function.h	2026-11-13 15:59:32.341110171 +0000
+@@ -11,7 +11,7 @@
+ #include "frames.h"
+ #include "lists.h"
+ #include "parse.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ 
+ typedef struct _function FUNCTION;
+ typedef struct _stack STACK;
+diff -ruN boost_orig/tools/build/src/engine/hdrmacro.c boost_patched/tools/build/src/engine/hdrmacro.c
+--- a/tools/build/src/engine/hdrmacro.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/hdrmacro.c	2026-11-13 15:59:32.329110014 +0000
+@@ -36,7 +36,7 @@
+ #include "object.h"
+ #include "parse.h"
+ #include "rules.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "subst.h"
+ #include "variable.h"
+ #include "output.h"
+diff -ruN boost_orig/tools/build/src/engine/jam.c boost_patched/tools/build/src/engine/jam.c
+--- a/tools/build/src/engine/jam.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/jam.c	2026-11-13 15:59:32.329110014 +0000
+@@ -117,7 +117,7 @@
+ #include "rules.h"
+ #include "scan.h"
+ #include "search.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "timestamp.h"
+ #include "variable.h"
+ 
+diff -ruN boost_orig/tools/build/src/engine/jam_strings.h boost_patched/tools/build/src/engine/jam_strings.h
+--- a/tools/build/src/engine/jam_strings.h	1970-01-01 00:00:00.000000000 +0000
++++ b/tools/build/src/engine/jam_strings.h	2026-11-13 15:59:32.341110171 +0000
+@@ -0,0 +1,36 @@
++/*
++ * Copyright 2004. David Abrahams
++ * Distributed under the Boost Software License, Version 1.0.
++ * (See accompanying file LICENSE_1_0.txt or copy at
++ * http://www.boost.org/LICENSE_1_0.txt)
++ */
++
++#ifndef STRINGS_DWA20011024_H
++#define STRINGS_DWA20011024_H
++
++#include <stddef.h>
++
++typedef struct string
++{
++    char * value;
++    unsigned long size;
++    unsigned long capacity;
++    char opt[ 32 ];
++#ifndef NDEBUG
++    char magic[ 4 ];
++#endif
++} string;
++
++void string_new( string * );
++void string_copy( string *, char const * );
++void string_free( string * );
++void string_append( string *, char const * );
++void string_append_range( string *, char const *, char const * );
++void string_push_back( string * s, char x );
++void string_reserve( string *, size_t );
++void string_truncate( string *, size_t );
++void string_pop_back( string * );
++char string_back( string * );
++void string_unit_test();
++
++#endif
+diff -ruN boost_orig/tools/build/src/engine/modules.c boost_patched/tools/build/src/engine/modules.c
+--- a/tools/build/src/engine/modules.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/modules.c	2026-11-13 15:59:32.329110014 +0000
+@@ -14,7 +14,7 @@
+ #include "object.h"
+ #include "parse.h"
+ #include "rules.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "variable.h"
+ 
+ #include <assert.h>
+diff -ruN boost_orig/tools/build/src/engine/pathsys.h boost_patched/tools/build/src/engine/pathsys.h
+--- a/tools/build/src/engine/pathsys.h	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/pathsys.h	2026-11-13 15:59:32.329110014 +0000
+@@ -22,7 +22,7 @@
+ #define PATHSYS_VP_20020211_H
+ 
+ #include "object.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ 
+ 
+ typedef struct _pathpart
+diff -ruN boost_orig/tools/build/src/engine/search.c boost_patched/tools/build/src/engine/search.c
+--- a/tools/build/src/engine/search.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/search.c	2026-11-13 15:59:32.341110171 +0000
+@@ -20,7 +20,7 @@
+ #include "lists.h"
+ #include "object.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "timestamp.h"
+ #include "variable.h"
+ #include "output.h"
+diff -ruN boost_orig/tools/build/src/engine/strings.c boost_patched/tools/build/src/engine/strings.c
+--- a/tools/build/src/engine/strings.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/strings.c	2026-11-13 15:59:32.341110171 +0000
+@@ -3,7 +3,7 @@
+ /* file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
+ 
+ #include "jam.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ 
+ #include <assert.h>
+ #include <stdlib.h>
+diff -ruN boost_orig/tools/build/src/engine/strings.h boost_patched/tools/build/src/engine/strings.h
+--- a/tools/build/src/engine/strings.h	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/strings.h	1970-01-01 00:00:00.000000000 +0000
+@@ -1,36 +0,0 @@
+-/*
+- * Copyright 2004. David Abrahams
+- * Distributed under the Boost Software License, Version 1.0.
+- * (See accompanying file LICENSE_1_0.txt or copy at
+- * http://www.boost.org/LICENSE_1_0.txt)
+- */
+-
+-#ifndef STRINGS_DWA20011024_H
+-#define STRINGS_DWA20011024_H
+-
+-#include <stddef.h>
+-
+-typedef struct string
+-{
+-    char * value;
+-    unsigned long size;
+-    unsigned long capacity;
+-    char opt[ 32 ];
+-#ifndef NDEBUG
+-    char magic[ 4 ];
+-#endif
+-} string;
+-
+-void string_new( string * );
+-void string_copy( string *, char const * );
+-void string_free( string * );
+-void string_append( string *, char const * );
+-void string_append_range( string *, char const *, char const * );
+-void string_push_back( string * s, char x );
+-void string_reserve( string *, size_t );
+-void string_truncate( string *, size_t );
+-void string_pop_back( string * );
+-char string_back( string * );
+-void string_unit_test();
+-
+-#endif
+diff -ruN boost_orig/tools/build/src/engine/timestamp.c boost_patched/tools/build/src/engine/timestamp.c
+--- a/tools/build/src/engine/timestamp.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/timestamp.c	2026-11-13 15:59:32.341110171 +0000
+@@ -31,7 +31,7 @@
+ #include "hash.h"
+ #include "object.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "output.h"
+ 
+ 
+diff -ruN boost_orig/tools/build/src/engine/variable.c boost_patched/tools/build/src/engine/variable.c
+--- a/tools/build/src/engine/variable.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/variable.c	2026-11-13 15:59:32.329110014 +0000
+@@ -38,7 +38,7 @@
+ #include "modules.h"
+ #include "parse.h"
+ #include "pathsys.h"
+-#include "strings.h"
++#include "jam_strings.h"
+ #include "output.h"
+ 
+ #include <stdio.h>
+diff -ruN boost_orig/tools/build/src/engine/w32_getreg.c boost_patched/tools/build/src/engine/w32_getreg.c
+--- a/tools/build/src/engine/w32_getreg.c	2017-04-17 02:22:26.000000000 +0000
++++ b/tools/build/src/engine/w32_getreg.c	2026-11-13 15:59:32.329110014 +0000
+@@ -12,7 +12,7 @@
+ # include "object.h"
+ # include "parse.h"
+ # include "frames.h"
+-# include "strings.h"
++# include "jam_strings.h"
+ 
+ # define WIN32_LEAN_AND_MEAN
+ # include <windows.h>
