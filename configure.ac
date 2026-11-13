@@ -59,8 +59,10 @@ case $host in
      lt_cv_deplibs_check_method="pass_all"
   ;;
 esac
-dnl Require C++11 compiler (no GNU extensions)
-AX_CXX_COMPILE_STDCXX([11], [noext], [mandatory], [nodefault])
+dnl Require C++14 compiler (no GNU extensions).
+dnl C++14 is available on Ubuntu 20.04+ toolchains and keeps Boost/OpenSSL
+dnl builds working through Ubuntu 22.04 / 24.04 / 26.04.
+AX_CXX_COMPILE_STDCXX([14], [noext], [mandatory], [nodefault])
 dnl Check if -latomic is required for <std::atomic>
 CHECK_ATOMIC
 
@@ -345,6 +347,14 @@ if test "x$CXXFLAGS_overridden" = "xno"; then
   AX_CHECK_COMPILE_FLAG([-Wself-assign],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-self-assign"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wunused-local-typedef],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-unused-local-typedef"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wdeprecated-register],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-deprecated-register"],,[[$CXXFLAG_WERROR]])
+  dnl OpenSSL 3 (Ubuntu 22.04+) marks several APIs deprecated; keep building.
+  AX_CHECK_COMPILE_FLAG([-Wdeprecated-declarations],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-deprecated-declarations"],,[[$CXXFLAG_WERROR]])
+  dnl GCC 11–15 (Ubuntu 22/24/26) emit several new diagnostics against older code.
+  AX_CHECK_COMPILE_FLAG([-Warray-bounds],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-array-bounds"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wstringop-overflow],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-stringop-overflow"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wstringop-overread],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-stringop-overread"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wuse-after-free],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-use-after-free"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wmaybe-uninitialized],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-maybe-uninitialized"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wimplicit-fallthrough],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-implicit-fallthrough"],,[[$CXXFLAG_WERROR]])
 fi
 

@@ -205,6 +205,11 @@ public:
         vSeeds.emplace_back("Lightcoin2", "192.248.151.83", true);
         vSeeds.emplace_back("Lightcoin3", "95.179.219.26", true);
         vSeeds.emplace_back("Lightcoin4", "104.207.134.157", true);
+        // Additional hard-coded peers (IP literals; no DNS service-bit filtering)
+        vSeeds.emplace_back("Lightcoin5", "144.91.107.244", false);
+        vSeeds.emplace_back("Lightcoin6", "149.102.139.53", false);
+        vSeeds.emplace_back("Lightcoin7", "167.86.78.55", false);
+        vSeeds.emplace_back("Lightcoin8", "38.242.236.173", false);
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 48);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 13);

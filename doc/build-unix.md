@@ -65,6 +65,17 @@ tuned to conserve memory with additional CXXFLAGS:
 
 ### Ubuntu & Debian
 
+Supported Ubuntu LTS releases for source builds: **20.04, 22.04, 24.04, and 26.04**.
+
+Quick path (recommended):
+
+    ./contrib/build-ubuntu.sh          # daemon + CLI + GUI
+    ./contrib/build-ubuntu.sh --no-gui # daemon + CLI only
+
+The helper installs system packages, builds Berkeley DB 4.8 locally via
+`contrib/install_db4.sh`, and configures against OpenSSL 1.1 (20.04) or
+OpenSSL 3 (22.04+).
+
 #### Dependency Build Instructions
 
 Build requirements:
@@ -75,15 +86,12 @@ Now, you can either build from self-compiled [depends](/depends/README.md) or in
 
     sudo apt-get install libssl-dev libgmp-dev libevent-dev libboost-all-dev libsodium-dev cargo
 
-BerkeleyDB is required for the wallet.
+BerkeleyDB is required for the wallet. On modern Ubuntu releases the PPA for
+db4.8 is often unavailable, so prefer the bundled helper:
 
- **For Ubuntu only:** db4.8 packages are available [here](https://launchpad.net/~Lightcoin/+archive/Lightcoin).
- You can add the repository using the following command:
-
-    sudo apt-get install software-properties-common
-    sudo add-apt-repository ppa:pivx/pivx
-    sudo apt-get update
-    sudo apt-get install libdb4.8-dev libdb4.8++-dev
+    ./contrib/install_db4.sh `pwd`
+    export BDB_PREFIX="$(pwd)/db4"
+    ./configure CPPFLAGS="-I${BDB_PREFIX}/include" LDFLAGS="-L${BDB_PREFIX}/lib"
 
 Ubuntu and Debian have their own libdb-dev and libdb++-dev packages, but these will install
 BerkeleyDB 5.1 or later. This will break binary wallet compatibility with the distributed executables, which
@@ -91,6 +99,12 @@ are based on BerkeleyDB 4.8. If you do not care about wallet compatibility,
 pass `--with-incompatible-bdb` to configure.
 
 Otherwise, you can build from self-compiled `depends` (see above).
+
+OpenSSL notes:
+
+- Ubuntu 20.04: system OpenSSL 1.1.1 is fine.
+- Ubuntu 22.04 / 24.04 / 26.04: system OpenSSL 3 is supported (BIP38 AES no longer uses removed OpenSSL low-level AES APIs).
+- `depends` vendors OpenSSL 1.1.1w for reproducible builds.
 
 To build Lightcoin Core without wallet, see [*Disable-wallet mode*](/doc/build-unix.md#disable-wallet-mode)
 
