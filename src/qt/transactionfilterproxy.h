@@ -38,7 +38,7 @@ public:
 
     void setDateRange(const QDateTime& from, const QDateTime& to);
     void clearDateRange() {
-        if (dateFrom != MIN_DATE || dateTo == MAX_DATE)
+        if (dateFrom != MIN_DATE || dateTo != MAX_DATE)
             setDateRange(MIN_DATE, MAX_DATE);
     }
 

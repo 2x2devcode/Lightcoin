@@ -261,7 +261,11 @@ bool ColdStakingWidget::refreshDelegations()
 {
     if (isLoading) return false;
     isLoading = true;
-    return execute(REQUEST_LOAD_TASK);
+    if (!execute(REQUEST_LOAD_TASK)) {
+        isLoading = false;
+        return false;
+    }
+    return true;
 }
 
 void ColdStakingWidget::onDelegationsRefreshed()

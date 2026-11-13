@@ -12,13 +12,10 @@ void Worker::process(){
         try {
             runnable->run(type);
         } catch (std::exception &e) {
-            QString errorStr = QString::fromStdString(e.what());
-            runnable->onError(errorStr, type);
-            Q_EMIT error(errorStr, type);
+            // Only emit the signal: onError must run on the GUI thread.
+            Q_EMIT error(QString::fromStdString(e.what()), type);
         } catch (...) {
-            QString errorStr = QString::fromStdString("Unknown error running background task");
-            runnable->onError(errorStr, type);
-            Q_EMIT error(errorStr, type);
+            Q_EMIT error(QString::fromStdString("Unknown error running background task"), type);
         }
     } else {
         Q_EMIT error("Null runnable", type);
@@ -60,6 +57,10 @@ void LoadingDialog::execute(Runnable *runnable, int type, std::unique_ptr<Wallet
     connect(worker, &Worker::finished, thread, &QThread::quit);
     connect(worker, &Worker::finished, worker, &Worker::deleteLater);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    // Marshal onError onto the GUI thread via this QObject context.
+    connect(worker, &Worker::error, this, [runnable](QString err, int errType) {
+        if (runnable) runnable->onError(err, errType);
+    });
     connect(worker, &Worker::finished, this, &LoadingDialog::finished);
     thread->start();
 }
