@@ -1,0 +1,48 @@
+diff -ruN orig/configure.ac patched/configure.ac
+--- a/configure.ac	2017-01-25 23:37:15.000000000 +0000
++++ b/configure.ac	2026-11-13 17:05:02.444510603 +0000
+@@ -341,6 +341,7 @@
+ AC_CHECK_FUNCS([ \
+   accept4 \
+   arc4random \
++  arc4random_addrandom \
+   arc4random_buf \
+   eventfd \
+   epoll_create1 \
+diff -ruN orig/evutil_rand.c patched/evutil_rand.c
+--- a/evutil_rand.c	2017-01-25 23:37:15.000000000 +0000
++++ b/evutil_rand.c	2026-11-13 17:05:02.468510078 +0000
+@@ -192,12 +192,14 @@
+ 	ev_arc4random_buf(buf, n);
+ }
+ 
++#if !defined(EVENT__HAVE_ARC4RANDOM) || defined(EVENT__HAVE_ARC4RANDOM_ADDRANDOM)
+ void
+ evutil_secure_rng_add_bytes(const char *buf, size_t n)
+ {
+ 	arc4random_addrandom((unsigned char*)buf,
+ 	    n>(size_t)INT_MAX ? INT_MAX : (int)n);
+ }
++#endif
+ 
+ void
+ evutil_free_secure_rng_globals_(void)
+diff -ruN orig/include/event2/util.h patched/include/event2/util.h
+--- a/include/event2/util.h	2017-01-25 23:37:15.000000000 +0000
++++ b/include/event2/util.h	2026-11-13 17:05:02.484509728 +0000
+@@ -842,6 +842,7 @@
+ EVENT2_EXPORT_SYMBOL
+ int evutil_secure_rng_set_urandom_device_file(char *fname);
+ 
++#if !defined(EVENT__HAVE_ARC4RANDOM) || defined(EVENT__HAVE_ARC4RANDOM_ADDRANDOM)
+ /** Seed the random number generator with extra random bytes.
+ 
+     You should almost never need to call this function; it should be
+@@ -858,6 +859,7 @@
+  */
+ EVENT2_EXPORT_SYMBOL
+ void evutil_secure_rng_add_bytes(const char *dat, size_t datlen);
++#endif
+ 
+ #ifdef __cplusplus
+ }
