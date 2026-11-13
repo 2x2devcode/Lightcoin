@@ -7,7 +7,11 @@ $(package)_file_name=$(package)-$($(package)_version).tar.gz
 $(package)_sha256_hash=23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
 
 define $(package)_set_vars
+# OpenSSL defaults RC=windres; cross mingw builds need the prefixed tool
+# (e.g. x86_64-w64-mingw32-windres) via RC/WINDRES.
 $(package)_config_env=AR="$($(package)_ar)" RANLIB="$($(package)_ranlib)" CC="$($(package)_cc)"
+$(package)_config_env+=RC="$($(package)_rc)" WINDRES="$($(package)_rc)"
+$(package)_build_env+=RC="$($(package)_rc)" WINDRES="$($(package)_rc)"
 $(package)_config_opts=--prefix=$(host_prefix) --openssldir=$(host_prefix)/etc/openssl --libdir=lib
 $(package)_config_opts+=no-shared
 $(package)_config_opts+=no-module
