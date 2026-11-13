@@ -1,6 +1,6 @@
 dnl require autoconf 2.60 (AS_ECHO/AS_ECHO_N)
 AC_PREREQ([2.60])
-define(_CLIENT_VERSION_MAJOR, 1)
+define(_CLIENT_VERSION_MAJOR, 2)
 define(_CLIENT_VERSION_MINOR, 0)
 define(_CLIENT_VERSION_REVISION, 0)
 define(_CLIENT_VERSION_BUILD, 0)
@@ -59,8 +59,10 @@ case $host in
      lt_cv_deplibs_check_method="pass_all"
   ;;
 esac
-dnl Require C++11 compiler (no GNU extensions)
-AX_CXX_COMPILE_STDCXX([11], [noext], [mandatory], [nodefault])
+dnl Require C++14 compiler (no GNU extensions).
+dnl C++14 is available on Ubuntu 20.04+ toolchains and keeps Boost/OpenSSL
+dnl builds working through Ubuntu 22.04 / 24.04 / 26.04.
+AX_CXX_COMPILE_STDCXX([14], [noext], [mandatory], [nodefault])
 dnl Check if -latomic is required for <std::atomic>
 CHECK_ATOMIC
 
@@ -345,6 +347,14 @@ if test "x$CXXFLAGS_overridden" = "xno"; then
   AX_CHECK_COMPILE_FLAG([-Wself-assign],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-self-assign"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wunused-local-typedef],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-unused-local-typedef"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wdeprecated-register],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-deprecated-register"],,[[$CXXFLAG_WERROR]])
+  dnl OpenSSL 3 (Ubuntu 22.04+) marks several APIs deprecated; keep building.
+  AX_CHECK_COMPILE_FLAG([-Wdeprecated-declarations],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-deprecated-declarations"],,[[$CXXFLAG_WERROR]])
+  dnl GCC 11–15 (Ubuntu 22/24/26) emit several new diagnostics against older code.
+  AX_CHECK_COMPILE_FLAG([-Warray-bounds],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-array-bounds"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wstringop-overflow],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-stringop-overflow"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wstringop-overread],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-stringop-overread"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wuse-after-free],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-use-after-free"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wmaybe-uninitialized],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-maybe-uninitialized"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wimplicit-fallthrough],[NOWARN_CXXFLAGS="$NOWARN_CXXFLAGS -Wno-implicit-fallthrough"],,[[$CXXFLAG_WERROR]])
 fi
 
@@ -1068,8 +1078,8 @@ if test x$use_pkgconfig = xyes; then
   m4_ifdef(
     [PKG_CHECK_MODULES],
     [
-      PKG_CHECK_MODULES([SSL], [libssl],, [AC_MSG_ERROR(openssl  not found.)])
-      PKG_CHECK_MODULES([CRYPTO], [libcrypto],,[AC_MSG_ERROR(libcrypto  not found.)])
+      PKG_CHECK_MODULES([SSL], [libssl >= 1.1.1],, [AC_MSG_ERROR(OpenSSL 1.1.1+ / 3.x not found.)])
+      PKG_CHECK_MODULES([CRYPTO], [libcrypto >= 1.1.1],,[AC_MSG_ERROR(libcrypto 1.1.1+ / 3.x not found.)])
       BITCOIN_QT_CHECK([PKG_CHECK_MODULES([PROTOBUF], [protobuf], [have_protobuf=yes], [BITCOIN_QT_FAIL(libprotobuf not found)])])
       BITCOIN_QT_CHECK([PKG_CHECK_MODULES([QR], [libqrencode],,[BITCOIN_QT_FAIL(libqrencode not found)])])
       if test x$use_qtcharts != xno; then
@@ -1520,7 +1530,8 @@ if test x$need_bundled_univalue = xyes; then
   AC_CONFIG_SUBDIRS([src/univalue])
 fi
 
-ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery --disable-jni"
+dnl OpenSSL 3 breaks secp256k1's optional OpenSSL EC tests; we do not need them.
+ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery --disable-jni --disable-openssl-tests"
 AC_CONFIG_SUBDIRS([src/secp256k1])
 
 AC_OUTPUT

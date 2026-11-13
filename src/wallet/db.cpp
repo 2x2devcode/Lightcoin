@@ -41,6 +41,11 @@ void CDBEnv::EnvShutdown()
         LogPrintf("CDBEnv::EnvShutdown : Error %d shutting down database environment: %s\n", ret, DbEnv::strerror(ret));
     if (!fMockDb)
         DbEnv(0).remove(strPath.c_str(), 0);
+
+    // BDB docs: a DbEnv handle must not be reused after close(). Recreate it so
+    // later Open()/static teardown cannot touch a closed handle (heap corruption
+    // / "corrupted double-linked list" on Linux Lightcoind shutdown).
+    Reset();
 }
 
 void CDBEnv::Reset()
@@ -105,8 +110,12 @@ bool CDBEnv::Open(const fs::path& pathIn)
             DB_RECOVER |
             nEnvFlags,
         S_IRUSR | S_IWUSR);
-    if (ret != 0)
+    if (ret != 0) {
+        // Discard the failed handle; BDB forbids reuse after a failed open/close.
+        dbenv->close(0);
+        Reset();
         return error("CDBEnv::Open : Error %d opening database environment: %s\n", ret, DbEnv::strerror(ret));
+    }
 
     fDbEnvInit = true;
     fMockDb = false;

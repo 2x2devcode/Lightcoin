@@ -17,6 +17,7 @@
 #include <QModelIndex>
 #include <QList>
 #include <QGraphicsLayout>
+#include <stdexcept>
 
 #define DECORATION_SIZE 65
 #define NUM_ITEMS 3
@@ -216,12 +217,13 @@ void DashboardWidget::loadWalletModel()
         // Notification pop-up for new transaction
         connect(txModel, &TransactionTableModel::rowsInserted, this, &DashboardWidget::processNewTransaction);
 #ifdef USE_QTCHARTS
-        // chart filter
-        stakesFilter = new TransactionFilterProxy();
-        stakesFilter->setDynamicSortFilter(true);
+        // chart filter — parented and non-dynamic so worker-thread reads stay stable
+        stakesFilter = new TransactionFilterProxy(this);
+        stakesFilter->setDynamicSortFilter(false);
         stakesFilter->setOnlyStakes(true);
         stakesFilter->setSourceModel(txModel);
         hasStakes = stakesFilter->rowCount() > 0;
+        filterUpdateNeeded = true;
 
         onHideChartsChanged(walletModel->getOptionsModel()->isHideCharts());
         connect(walletModel->getOptionsModel(), &OptionsModel::hideChartsChanged, this, &DashboardWidget::onHideChartsChanged);
@@ -387,7 +389,10 @@ void DashboardWidget::setChartShow(ChartShowType type)
     } else {
         ui->containerChartArrow->setVisible(false);
     }
-    if (isChartInitialized) refreshChart();
+    if (isChartInitialized) {
+        filterUpdateNeeded = true;
+        refreshChart();
+    }
 }
 
 const QStringList monthsNames = {QObject::tr("Jan"), QObject::tr("Feb"), QObject::tr("Mar"), QObject::tr("Apr"),
@@ -491,6 +496,7 @@ void DashboardWidget::changeChartColors()
 
 void DashboardWidget::updateStakeFilter()
 {
+    if (!stakesFilter) return;
     if (chartShow != ALL) {
         bool filterByMonth = false;
         if (monthFilter != 0 && chartShow == MONTH) {
@@ -511,12 +517,14 @@ void DashboardWidget::updateStakeFilter()
             }
         } else if (filterByMonth) {
             QDate currentDate = QDate::currentDate();
-            QDate monthFirst = QDate(currentDate.year(), monthFilter, 1);
+            yearFilter = currentDate.year();
+            QDate monthFirst = QDate(yearFilter, monthFilter, 1);
             stakesFilter->setDateRange(
                     QDateTime(monthFirst),
-                    QDateTime(QDate(currentDate.year(), monthFilter, monthFirst.daysInMonth()))
+                    QDateTime(QDate(yearFilter, monthFilter, monthFirst.daysInMonth()))
             );
-            ui->comboBoxYears->setCurrentText(QString::number(currentDate.year()));
+            // UI updates must stay on the GUI thread (caller guarantees that).
+            ui->comboBoxYears->setCurrentText(QString::number(yearFilter));
         } else {
             stakesFilter->clearDateRange();
         }
@@ -525,48 +533,62 @@ void DashboardWidget::updateStakeFilter()
     }
 }
 
-// pair PIV, zPIV
-const QMap<int, std::pair<qint64, qint64>> DashboardWidget::getAmountBy()
+void DashboardWidget::snapshotStakeChartData()
 {
-    updateStakeFilter();
+    chartStakeSnapshot.clear();
+    if (!stakesFilter) return;
+
+    if (filterUpdateNeeded) {
+        filterUpdateNeeded = false;
+        updateStakeFilter();
+    }
+
     const int size = stakesFilter->rowCount();
-    QMap<int, std::pair<qint64, qint64>> amountBy;
-    // Get all of the stakes
+    chartStakeSnapshot.reserve(size);
     for (int i = 0; i < size; ++i) {
         QModelIndex modelIndex = stakesFilter->index(i, TransactionTableModel::ToAddress);
-        qint64 amount = llabs(modelIndex.data(TransactionTableModel::AmountRole).toLongLong());
-        QDate date = modelIndex.data(TransactionTableModel::DateRole).toDateTime().date();
-        bool isLHC = modelIndex.data(TransactionTableModel::TypeRole).toInt() != TransactionRecord::StakezLHC;
+        StakeChartSample sample;
+        sample.amount = llabs(modelIndex.data(TransactionTableModel::AmountRole).toLongLong());
+        sample.date = modelIndex.data(TransactionTableModel::DateRole).toDateTime().date();
+        sample.type = modelIndex.data(TransactionTableModel::TypeRole).toInt();
+        chartStakeSnapshot.append(sample);
+    }
+}
+
+// pair LHC, zLHC — aggregates a GUI-thread snapshot; safe on worker threads.
+const QMap<int, std::pair<qint64, qint64>> DashboardWidget::getAmountBy() const
+{
+    QMap<int, std::pair<qint64, qint64>> amountBy;
+    for (const StakeChartSample& sample : chartStakeSnapshot) {
+        bool isLHC = sample.type != TransactionRecord::StakezLHC;
 
         int time = 0;
         switch (chartShow) {
             case YEAR: {
-                time = date.month();
+                time = sample.date.month();
                 break;
             }
             case ALL: {
-                time = date.year();
+                time = sample.date.year();
                 break;
             }
             case MONTH: {
-                time = date.day();
+                time = sample.date.day();
                 break;
             }
             default:
-                inform(tr("Error loading chart, invalid show option"));
                 return amountBy;
         }
         if (amountBy.contains(time)) {
             if (isLHC) {
-                amountBy[time].first += amount;
+                amountBy[time].first += sample.amount;
             } else
-                amountBy[time].second += amount;
+                amountBy[time].second += sample.amount;
         } else {
             if (isLHC) {
-                amountBy[time] = std::make_pair(amount, 0);
+                amountBy[time] = std::make_pair(sample.amount, 0);
             } else {
-                amountBy[time] = std::make_pair(0, amount);
-                haszLightcointakes = true;
+                amountBy[time] = std::make_pair(0, sample.amount);
             }
         }
     }
@@ -581,7 +603,15 @@ bool DashboardWidget::loadChartData(bool withMonthNames)
     }
 
     chartData = new ChartData();
-    chartData->amountsByCache = getAmountBy(); // pair PIV, zPIV
+    chartData->amountsByCache = getAmountBy(); // pair LHC, zLHC from GUI snapshot
+
+    haszLightcointakes = false;
+    for (auto it = chartData->amountsByCache.constBegin(); it != chartData->amountsByCache.constEnd(); ++it) {
+        if (it.value().second > 0) {
+            haszLightcointakes = true;
+            break;
+        }
+    }
 
     std::pair<int,int> range = getChartRange(chartData->amountsByCache);
     if (range.first == 0 && range.second == 0) {
@@ -624,6 +654,7 @@ void DashboardWidget::onChartYearChanged(const QString& yearStr)
         int newYear = yearStr.toInt();
         if (newYear != yearFilter) {
             yearFilter = newYear;
+            filterUpdateNeeded = true;
             refreshChart();
         }
     }
@@ -635,6 +666,7 @@ void DashboardWidget::onChartMonthChanged(const QString& monthStr)
         int newMonth = ui->comboBoxMonths->currentData().toInt();
         if (newMonth != monthFilter) {
             monthFilter = newMonth;
+            filterUpdateNeeded = true;
             refreshChart();
 #ifndef Q_OS_MAC
         // quick hack to re paint the chart view.
@@ -652,7 +684,15 @@ bool DashboardWidget::refreshChart()
     isChartMin = width() < 1300;
     isChartInitialized = false;
     showHideEmptyChart(true, true);
-    return execute(REQUEST_LOAD_TASK);
+    // Filter invalidation and model reads must happen on the GUI thread.
+    // Worker threads only aggregate the plain snapshot below.
+    snapshotStakeChartData();
+    if (!execute(REQUEST_LOAD_TASK)) {
+        isLoading = false;
+        showHideEmptyChart(false, false);
+        return false;
+    }
+    return true;
 }
 
 void DashboardWidget::onChartRefreshed()
@@ -763,8 +803,7 @@ std::pair<int, int> DashboardWidget::getChartRange(QMap<int, std::pair<qint64, q
         case ALL: {
             QList<int> keys = amountsBy.uniqueKeys();
             if (keys.isEmpty()) {
-                // This should never happen, ALL means from the beginning of time and if this is called then it must have at least one stake..
-                inform(tr("Error loading chart, invalid data"));
+                // ALL requires at least one stake; return empty range for the caller to handle.
                 return std::make_pair(0, 0);
             }
             std::sort(keys.begin(), keys.end());
@@ -773,7 +812,6 @@ std::pair<int, int> DashboardWidget::getChartRange(QMap<int, std::pair<qint64, q
         case MONTH:
             return std::make_pair(dayStart, dayStart + 9);
         default:
-            inform(tr("Error loading chart, invalid show option"));
             return std::make_pair(0, 0);
     }
 }
@@ -828,8 +866,9 @@ void DashboardWidget::onChartArrowClicked(bool goLeft)
         }
     }
 
+    filterUpdateNeeded = true;
     refreshChart();
-    //Check if data end day is current date and monthfilter is current month
+    // Check if data end day is current date and monthfilter is current month
     bool fEndDayisCurrent = dataenddate  == currentDate.day() && monthFilter == currentDate.month();
 
     if (updateMonth)
@@ -880,7 +919,10 @@ void DashboardWidget::onHideChartsChanged(bool fHide)
     fShowCharts = !fHide;
     // Hide charts if requested
     ui->right->setVisible(fShowCharts);
-    if (fShowCharts) tryChartRefresh();
+    if (fShowCharts) {
+        filterUpdateNeeded = true;
+        tryChartRefresh();
+    }
 }
 
 #endif
@@ -890,13 +932,21 @@ void DashboardWidget::run(int type)
 #ifdef USE_QTCHARTS
     if (type == REQUEST_LOAD_TASK) {
         bool withMonthNames = !isChartMin && (chartShow == YEAR);
-        if (loadChartData(withMonthNames))
+        if (loadChartData(withMonthNames)) {
             QMetaObject::invokeMethod(this, "onChartRefreshed", Qt::QueuedConnection);
+        } else {
+            // Avoid touching Qt widgets from the worker thread.
+            isLoading = false;
+            throw std::runtime_error("Error loading chart, invalid data");
+        }
     }
 #endif
 }
 void DashboardWidget::onError(QString error, int type)
 {
+#ifdef USE_QTCHARTS
+    isLoading = false;
+#endif
     inform(tr("Error loading chart: %1").arg(error));
 }
 

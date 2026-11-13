@@ -18,6 +18,8 @@
 #include <QWidget>
 #include <QLineEdit>
 #include <QMap>
+#include <QVector>
+#include <QDate>
 
 #if defined(HAVE_CONFIG_H)
 #include "config/Lightcoin-config.h" /* for USE_QTCHARTS */
@@ -86,6 +88,13 @@ public:
     QList<qreal> valuesLHC;
     QList<qreal> valueszLHC;
     QStringList xLabels;
+};
+
+/** Plain stake row copied on the GUI thread before chart aggregation. */
+struct StakeChartSample {
+    qint64 amount = 0;
+    QDate date;
+    int type = 0;
 };
 
 QT_BEGIN_NAMESPACE
@@ -170,13 +179,16 @@ private:
     ChartData* chartData = nullptr;
     bool hasStakes = false;
     bool fShowCharts = true;
+    bool filterUpdateNeeded = true;
+    QVector<StakeChartSample> chartStakeSnapshot;
 
     void initChart();
     void showHideEmptyChart(bool show, bool loading, bool forceView = false);
     bool refreshChart();
     void tryChartRefresh();
     void updateStakeFilter();
-    const QMap<int, std::pair<qint64, qint64>> getAmountBy();
+    void snapshotStakeChartData();
+    const QMap<int, std::pair<qint64, qint64>> getAmountBy() const;
     bool loadChartData(bool withMonthNames);
     void updateAxisX(const QStringList *arg = nullptr);
     void setChartShow(ChartShowType type);

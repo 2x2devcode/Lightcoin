@@ -8,6 +8,8 @@
 #include "qt/Lightcoin/loadingdialog.h"
 #include <QRunnable>
 #include <QThreadPool>
+#include <atomic>
+#include <stdexcept>
 
 PWidget::PWidget(LightcoinGUI* _window, QWidget *parent) : QWidget((parent) ? parent : _window), window(_window) { init(); }
 PWidget::PWidget(PWidget* parent) : QWidget(parent), window(parent->getWindow()) { init(); }
@@ -77,37 +79,58 @@ public:
     }
 
     ~WorkerTask() {
-        if (!worker.isNull()) worker.clear();
+        if (!worker.isNull()) {
+            // Worker lives on the GUI thread; schedule deletion there.
+            worker->deleteLater();
+            worker.clear();
+        }
     }
 
     void run() override {
+        if (running.exchange(true)) {
+            // Already running — never start the same QRunnable concurrently.
+            return;
+        }
         if (!worker.isNull()) {
             Worker* _worker = worker.data();
             _worker->process();
             _worker->clean();
         }
+        running.store(false);
     }
 
+    bool isRunning() const { return running.load(); }
+
     QPointer<Worker> worker;
+    std::atomic<bool> running{false};
 };
 
 bool PWidget::execute(int type, std::unique_ptr<WalletModel::UnlockContext> pctx)
 {
     if (task.isNull()) {
         Worker* worker = (!pctx) ? new Worker(this, type) : new WalletWorker(this, type, std::move(pctx));
+        // AutoConnection queues the slot onto the GUI thread (receiver lives there).
         connect(worker, &Worker::error, this, &PWidget::errorString);
 
         WorkerTask* workerTask = new WorkerTask(QPointer<Worker>(worker));
         workerTask->setAutoDelete(false);
         task = QSharedPointer<WorkerTask>(workerTask);
-    } else if (pctx){
+    } else {
         if (task->worker.isNull() || !task->worker.data()) // Must never happen
             throw std::runtime_error("Worker task null");
 
-        // Update context
-        if (dynamic_cast<WalletWorker*>(task->worker.data()) != nullptr) {
-            WalletWorker* _worker = static_cast<WalletWorker*>(task->worker.data());
-            _worker->setContext(std::move(pctx));
+        if (task->isRunning()) {
+            return false;
+        }
+
+        task->worker->setType(type);
+
+        if (pctx) {
+            // Update unlock context
+            if (dynamic_cast<WalletWorker*>(task->worker.data()) != nullptr) {
+                WalletWorker* _worker = static_cast<WalletWorker*>(task->worker.data());
+                _worker->setContext(std::move(pctx));
+            }
         }
     }
     QThreadPool::globalInstance()->start(task.data());

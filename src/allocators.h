@@ -76,7 +76,10 @@ public:
         const size_t end_page = (base_addr + size - 1) & page_mask;
         for (size_t page = start_page; page <= end_page; page += page_size) {
             Histogram::iterator it = histogram.find(page);
-            assert(it != histogram.end()); // Cannot unlock an area that was not locked
+            // Release builds strip assert(); touching end() here corrupts the heap
+            // (glibc: "corrupted double-linked list") on Linux CLI and GUI wallets.
+            if (it == histogram.end())
+                continue;
             // Decrease counter for page, when it is zero, the page will be unlocked
             it->second -= 1;
             if (it->second == 0) // Nothing on the page anymore that keeps it locked
@@ -147,13 +150,12 @@ private:
 
     static void CreateInstance()
     {
-        // Using a local static instance guarantees that the object is initialized
-        // when it's first needed and also deinitialized after all objects that use
-        // it are done with it.  I can think of one unlikely scenario where we may
-        // have a static deinitialization order/problem, but the check in
-        // LockedPageManagerBase's destructor helps us detect if that ever happens.
-        static LockedPageManager instance;
-        LockedPageManager::_instance = &instance;
+        // Intentionally allocated with new and never deleted.
+        // SecureString / CKey (secure_allocator) objects can still be destroyed
+        // during process teardown after function-local statics. Destroying this
+        // manager first made UnlockRange run on a dead mutex/map and aborted
+        // Linux Lightcoind/Lightcoin-qt with glibc "corrupted double-linked list".
+        LockedPageManager::_instance = new LockedPageManager();
     }
 
     static LockedPageManager* _instance;
