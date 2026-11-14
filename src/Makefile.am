@@ -38,12 +38,18 @@ LIBSAPLING=libsapling.a
 # Cargo emits a static archive; we expose a libtool .la so MinGW/libtool
 # actually pulls it into the final link (plain .a in LDADD can be dropped or
 # reordered under -all-static). See rust-lang/rust#69904 and zcash/zcash#6647.
-if ENABLE_ONLINE_RUST
-LIBRUSTZCASH_A=$(top_builddir)/target/release/librustzcash.a
-LIBRUSTZCASH=$(top_builddir)/target/release/librustzcash.la
-else
+#
+# Artifact path follows cargo: with --target, output is under
+# target/$(RUST_TARGET)/release/; without it, target/release/. Online vs
+# offline must not change this — otherwise a MinGW configure with the
+# default --enable-online-rust builds a host (Linux) librustzcash and the
+# link fails with undefined librustzcash_* refs.
+if HAVE_RUST_TARGET
 LIBRUSTZCASH_A=$(top_builddir)/target/$(RUST_TARGET)/release/librustzcash.a
 LIBRUSTZCASH=$(top_builddir)/target/$(RUST_TARGET)/release/librustzcash.la
+else
+LIBRUSTZCASH_A=$(top_builddir)/target/release/librustzcash.a
+LIBRUSTZCASH=$(top_builddir)/target/release/librustzcash.la
 endif
 
 if ENABLE_ZMQ
@@ -57,7 +63,16 @@ LIBBITCOIN_WALLET=libbitcoin_wallet.a
 endif
 
 RUST_ENV_VARS = RUSTC="$(RUSTC)" TERM=dumb
+# Cross builds need the host linker for *-windows-gnu (build scripts / cc crate).
+if TARGET_WINDOWS
+RUST_ENV_VARS += CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="$(CC)"
+endif
 RUST_BUILD_OPTS = --release
+# Always pass --target when depends/config.site set RUST_TARGET, including
+# the default online-rust mode (previously --target was offline-only).
+if HAVE_RUST_TARGET
+RUST_BUILD_OPTS += --target $(RUST_TARGET)
+endif
 
 if ENABLE_ONLINE_RUST
 # Ensure that .cargo/config does not exist
@@ -69,9 +84,6 @@ $(CARGO_CONFIGURED):
 else
 # Enable dependency vendoring
 RUST_BUILD_OPTS += --locked --offline
-if HAVE_RUST_TARGET
-RUST_BUILD_OPTS += --target $(RUST_TARGET)
-endif
 
 CARGO_CONFIGURED = $(top_srcdir)/.cargo/.configured-for-offline
 $(CARGO_CONFIGURED): $(top_srcdir)/.cargo/config.offline
