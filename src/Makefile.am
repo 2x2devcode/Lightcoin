@@ -80,14 +80,20 @@ cargo-build: $(CARGO_CONFIGURED)
 	$(RUST_ENV_VARS) $(CARGO) build $(RUST_BUILD_OPTS) --manifest-path $(top_srcdir)/Cargo.toml
 
 if TARGET_WINDOWS
-LIBRUSTZCASH_WIN=$(top_builddir)/target/$(RUST_TARGET)/release/rustzcash.lib
+# rustc < 1.44 emitted rustzcash.lib for *-windows-gnu; 1.44+ emits
+# librustzcash.a (correct for MinGW/libtool). Accept either artifact.
+LIBRUSTZCASH_WIN_LIB=$(dir $(LIBRUSTZCASH))rustzcash.lib
 
-$(LIBRUSTZCASH_WIN): cargo-build
-
-# This ensures that the Rust library is correctly linked in by libtool.
-# See https://github.com/rust-lang/rust/issues/69904 for the underlying cause.
-$(LIBRUSTZCASH): $(LIBRUSTZCASH_WIN)
-	$(AM_V_at)cp $< $@
+$(LIBRUSTZCASH): cargo-build
+	$(AM_V_at)if test -f "$(LIBRUSTZCASH_WIN_LIB)"; then \
+	  cp "$(LIBRUSTZCASH_WIN_LIB)" "$@"; \
+	elif test -f "$@"; then \
+	  :; \
+	else \
+	  echo "ERROR: cargo did not produce $@ or $(LIBRUSTZCASH_WIN_LIB)" >&2; \
+	  ls -la "$(dir $(LIBRUSTZCASH))" >&2 || true; \
+	  exit 1; \
+	fi
 
 else
 $(LIBRUSTZCASH): cargo-build
