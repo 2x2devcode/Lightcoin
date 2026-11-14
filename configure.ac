@@ -1218,7 +1218,14 @@ case $host in
 esac
 
 if test -z "$RUST_TARGET"; then
-  AC_MSG_WARN([RUST_TARGET not set, assuming native build])
+  case $host in
+    *mingw*)
+      AC_MSG_ERROR([RUST_TARGET is unset but host is MinGW. Configure with depends (config.site sets RUST_TARGET=x86_64-pc-windows-gnu) so cargo builds the Windows staticlib; a host librustzcash yields undefined librustzcash_* at link time.])
+      ;;
+    *)
+      AC_MSG_WARN([RUST_TARGET not set, assuming native build])
+      ;;
+  esac
 fi
 AM_CONDITIONAL([HAVE_RUST_TARGET], [test -n "$RUST_TARGET"])
 
