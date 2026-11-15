@@ -1,0 +1,12 @@
+--- a/qtbase/src/3rdparty/xcb/xcb-util/atoms.c	2026-11-15 01:17:47.056435322 +0000
++++ b/qtbase/src/3rdparty/xcb/xcb-util/atoms.c	2026-11-15 01:17:47.056435322 +0000
+@@ -2,8 +2,8 @@
+    possible... */
+ #ifdef HAVE_VASPRINTF
+ #define _GNU_SOURCE
+-#include <stdio.h>
+ #endif
++#include <stdio.h>
+ 
+ #include <xcb/xcb.h>
+ #include <stdlib.h>
