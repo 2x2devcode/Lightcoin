@@ -23,6 +23,8 @@
 #include "guiinterface.h"
 #include "util.h"
 
+#include <openssl/crypto.h>
+
 #include <stdint.h>
 
 #include <QDateTime>
@@ -222,9 +224,23 @@ QString ClientModel::formatFullVersion() const
     return QString::fromStdString(FormatFullVersion());
 }
 
+QString ClientModel::formatVersionFriendly() const
+{
+    return QString::fromStdString(FormatVersionFriendly());
+}
+
 QString ClientModel::formatBuildDate() const
 {
     return QString::fromStdString(CLIENT_DATE);
+}
+
+QString ClientModel::formatOpenSSLVersion() const
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    return QString::fromUtf8(OpenSSL_version(OPENSSL_VERSION));
+#else
+    return QString::fromUtf8(SSLeay_version(SSLEAY_VERSION));
+#endif
 }
 
 bool ClientModel::isReleaseVersion() const
