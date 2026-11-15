@@ -115,7 +115,7 @@
        <item row="4" column="0">
         <widget class="QLabel" name="buildDateLabel">
          <property name="text">
-          <string>Build date</string>
+          <string>OpenSSL version</string>
          </property>
         </widget>
        </item>

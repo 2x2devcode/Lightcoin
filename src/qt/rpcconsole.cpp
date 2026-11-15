@@ -466,9 +466,9 @@ void RPCConsole::setClientModel(ClientModel* model)
         showOrHideBanTableIfRequired();
 
         // Provide initial values
-        ui->clientVersion->setText(model->formatFullVersion());
+        ui->clientVersion->setText(model->formatVersionFriendly());
         ui->clientName->setText(model->clientName());
-        ui->buildDate->setText(model->formatBuildDate());
+        ui->buildDate->setText(model->formatOpenSSLVersion());
         ui->dataDir->setText(model->dataDir());
         ui->startupTime->setText(model->formatClientStartupTime());
         ui->networkName->setText(QString::fromStdString(Params().NetworkIDString()));

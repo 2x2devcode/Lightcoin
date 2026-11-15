@@ -94,6 +94,10 @@ std::string FormatFullVersion()
 
 std::string FormatVersionFriendly()
 {
+    // Prefer a short "major.minor" label in the GUI when patch/build are zero
+    // (e.g. release 2.0.0 → "2.0").
+    if (CLIENT_VERSION_REVISION == 0 && CLIENT_VERSION_BUILD == 0)
+        return strprintf("%d.%d", CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR);
     return FormatVersion(CLIENT_VERSION);
 }
 

@@ -74,7 +74,9 @@ public:
     QString getStatusBarWarnings() const;
 
     QString formatFullVersion() const;
+    QString formatVersionFriendly() const;
     QString formatBuildDate() const;
+    QString formatOpenSSLVersion() const;
     bool isReleaseVersion() const;
     QString clientName() const;
     QString formatClientStartupTime() const;
