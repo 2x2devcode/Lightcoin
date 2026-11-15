@@ -10,6 +10,13 @@ $(package)_config_opts=--disable-shared --enable-cxx --disable-replication
 $(package)_config_opts_mingw32=--enable-mingw
 $(package)_config_opts_linux=--with-pic
 $(package)_config_opts_aarch64=--disable-atomicsupport
+# BDB 4.8 configure probes use K&R-style main()/exit() without prototypes.
+# GCC 14+/15 (Ubuntu 24.04/26.04, C23 default) turn those into hard errors, so
+# mutex detection fails with: "Unable to find a mutex implementation" after
+# falling back to UNIX/fcntl. Pin gnu99 and keep implicit-decl as non-fatal.
+$(package)_cflags+=-std=gnu99
+$(package)_cflags+=-Wno-error=implicit-function-declaration -Wno-error=implicit-int
+$(package)_cflags+=-Wno-implicit-function-declaration -Wno-implicit-int
 $(package)_cxxflags=-std=c++11
 $(package)_cppflags_mingw32=-DUNICODE -D_UNICODE
 endef
