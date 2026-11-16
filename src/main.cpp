@@ -3547,7 +3547,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                 return state.DoS(0, false, REJECT_INVALID, "bad-cb-payee", false, "Couldn't find masternode/budget payment");
             }
         } else {
-            LogPrintf("%s: Masternode/Budget payment checks skipped on sync\n", __func__);
+            LogPrint(BCLog::MASTERNODE, "%s: Masternode/Budget payment checks skipped on sync\n", __func__);
         }
     }
 
@@ -4221,7 +4221,9 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, const CBlock* pblock
             pwalletMain->AutoCombineDust(connman);
     }
 
-    LogPrintf("%s : ACCEPTED Block %ld in %ld milliseconds with size=%d\n", __func__, newHeight, GetTimeMillis() - nStartTime,
+    // Redundant with UpdateTip; keep under -debug=bench to avoid multi-GB debug.log
+    // during IBD/reindex (one line per block on a multi-million-block chain).
+    LogPrint(BCLog::BENCH, "%s : ACCEPTED Block %ld in %ld milliseconds with size=%d\n", __func__, newHeight, GetTimeMillis() - nStartTime,
               GetSerializeSize(*pblock, SER_DISK, CLIENT_VERSION));
 
     return true;

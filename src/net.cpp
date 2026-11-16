@@ -769,8 +769,9 @@ bool CNode::ReceiveMsgBytes(const char* pch, unsigned int nBytes, bool& complete
             mapMsgCmdSize::iterator i = mapRecvBytesPerMsgCmd.find(msg.hdr.pchCommand);
             if (i == mapRecvBytesPerMsgCmd.end())
                 i = mapRecvBytesPerMsgCmd.find(NET_MESSAGE_COMMAND_OTHER);
-            assert(i != mapRecvBytesPerMsgCmd.end());
-            i->second += msg.hdr.nMessageSize + CMessageHeader::HEADER_SIZE;
+            // Release builds strip assert(); do not dereference end() (heap corruption).
+            if (i != mapRecvBytesPerMsgCmd.end())
+                i->second += msg.hdr.nMessageSize + CMessageHeader::HEADER_SIZE;
 
             msg.nTime = nTimeMicros;
             complete = true;

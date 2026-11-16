@@ -107,7 +107,7 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                 // spork is active
                 if (mapSporksActive[spork.nSporkID].nTimeSigned >= spork.nTimeSigned) {
                     // spork in memory has been signed more recently
-                    LogPrintf("%s : spork %d (%s) in memory is more recent: %d >= %d\n", __func__,
+                    LogPrint(BCLog::NET, "%s : spork %d (%s) in memory is more recent: %d >= %d\n", __func__,
                             spork.nSporkID, sporkName,
                             mapSporksActive[spork.nSporkID].nTimeSigned, spork.nTimeSigned);
                     return;

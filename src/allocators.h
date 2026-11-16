@@ -82,7 +82,7 @@ public:
                 continue;
             // Decrease counter for page, when it is zero, the page will be unlocked
             it->second -= 1;
-            if (it->second == 0) // Nothing on the page anymore that keeps it locked
+            if (it->second <= 0) // Nothing on the page anymore that keeps it locked
             {
                 // Unlock page and remove the count from histogram
                 locker.Unlock(reinterpret_cast<void*>(page), page_size);
