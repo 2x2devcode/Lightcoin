@@ -22,7 +22,12 @@ git_check_in_repo() {
     ! { git status --porcelain -uall --ignored "$@" 2>/dev/null || echo '??'; } | grep -q '?'
 }
 
-DESC="1.0.0"
+# Leave DESC empty by default. A hardcoded "1.0.0" here overrode
+# configure.ac's CLIENT_VERSION_* (2.0.0) whenever HEAD was not exactly
+# on a release tag, so debug.log kept reporting "Lightcoin version 1.0.0".
+# When DESC is unset, clientversion.cpp builds BUILD_DESC from
+# CLIENT_VERSION_MAJOR/MINOR/REVISION/BUILD (+ optional BUILD_SUFFIX).
+DESC=""
 SUFFIX=""
 LAST_COMMIT_DATE=""
 if [ "${BITCOIN_GENBUILD_NO_GIT}" != "1" -a -e "$(which git 2>/dev/null)" -a "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = "true" ] && git_check_in_repo share/genbuild.sh; then
@@ -31,7 +36,7 @@ if [ "${BITCOIN_GENBUILD_NO_GIT}" != "1" -a -e "$(which git 2>/dev/null)" -a "$(
 
     # if latest commit is tagged and not dirty, then override using the tag name
     RAWDESC=$(git describe --abbrev=0 2>/dev/null)
-    if [ "$(git rev-parse HEAD)" = "$(git rev-list -1 $RAWDESC 2>/dev/null)" ]; then
+    if [ -n "$RAWDESC" ] && [ "$(git rev-parse HEAD)" = "$(git rev-list -1 $RAWDESC 2>/dev/null)" ]; then
         git diff-index --quiet HEAD -- && DESC=$RAWDESC
     fi
 
