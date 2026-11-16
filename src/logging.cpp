@@ -228,16 +228,18 @@ int BCLog::Logger::LogPrintStr(const std::string &str)
 
 void BCLog::Logger::ShrinkDebugFile()
 {
-    // Amount of debug.log to save at end when shrinking (must fit in memory)
+    // Shrink when debug.log exceeds this size (must fit recent history in memory)
     constexpr size_t RECENT_DEBUG_HISTORY_SIZE = 10 * 1000000;
+    // Keep the last ~1 MiB of history (was 200 KiB; still tiny vs multi-GB IBD logs)
+    constexpr size_t RECENT_DEBUG_KEEP_SIZE = 1000000;
 
     assert(!m_file_path.empty());
 
-    // Scroll debug.log if it's getting too big
+    // Scroll debug.log if it's getting too big (runs before OpenDebugLog on startup)
     FILE* file = fsbridge::fopen(m_file_path, "r");
     if (file && fs::file_size(m_file_path) > RECENT_DEBUG_HISTORY_SIZE) {
         // Restart the file with some of the end
-        std::vector<char> vch(200000, 0);
+        std::vector<char> vch(RECENT_DEBUG_KEEP_SIZE, 0);
         fseek(file, -((long)vch.size()), SEEK_END);
         int nBytes = fread(vch.data(), 1, vch.size(), file);
         fclose(file);
